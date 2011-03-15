@@ -42,7 +42,7 @@ shell script was provided for that, so run
    MEMCACHED_INCLUDE=@MEMCACHED_INCLUDE@
    MEMCACHED_LIB=@MEMCACHED_LIB@
 7. edit the file build_tools/menuselect-deps.in and add the following line next to the similar ones:
-   SYMBOL=@PBX_SYMBOL@
+   MEMCACHED=@PBX_MEMCACHED@
 8. run 
    ./bootstrap.sh. 
 if you previously built from this asterisk directory, also do a 
