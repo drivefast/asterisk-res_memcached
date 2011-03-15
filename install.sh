@@ -3,3 +3,4 @@ if [ -s include/asterisk.h ] ; then
 	exit
 fi
 cp asterisk-res_memcached/res_memcached.c res/.
+cp asterisk-res_memcached/memcached.conf.sample configs/.
