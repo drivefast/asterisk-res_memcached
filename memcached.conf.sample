@@ -1,0 +1,16 @@
+[general]
+;binary_proto=yes                     ; using binary protocol for conversation with server; default is yes.
+                                      ;   note that the MCDCOUNTER() function is not happy if the protocol  
+                                      ;   is not binary
+hash=default                          ; hashing mode (see libmemcached documentation); accepted values are default
+                                      ;   (which is actually md5), md5, crc, fnv1_64, fnv1_64a, fnv1_32, fnv1_32a,
+                                      ;   jenkins, hsieh, murmur. make sure whatever you select is actually
+                                      ;   supported by the library ecosystem on your machine
+prefixkey=                            ; whatever string you specify here is prepended to each key that is retrieved
+                                      ;   or stored, so that you can create some sort of a "domain" for your
+                                      ;   asterisk server
+server=localhost:11211                ; multiple 'server=' entries will create a cluster of servers to connect to;
+;server=memcache.server.com:11211     ;   each entry is in the form host[:port], host being a fqdn or an ip address,
+                                      ;   the default memcached port is 11211. if no entries, the module will at
+                                      ;   least attempt to connect to a memcached running on the localhost
+
