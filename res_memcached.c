@@ -21,9 +21,9 @@
 
 /*! \file
  *
- * \brief MCD() memcache get from key
- * \brief mcdget memcache get from key into variable
- * \brief mcdset memcache set
+ * \brief MCD() memcache get/set value for key
+ * \brief mcdget memcache get value for key
+ * \brief mcdset memcache set key to value
  * \brief mcdadd memcache add
  * \brief mcdreplace memcache replace
  * \brief mcdappend memcache append to string variable
@@ -57,19 +57,18 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 /*** DOCUMENTATION
 	<function name="MCD" language="en_US">
 		<synopsis>
-			gets the value for a key in the cache store
+			gets or sets the value for a key in the cache store
 		</synopsis>	
 		<syntax>
 			<parameter name="key" required="true">
-				<para>key to be looked up</para>
+				<para>key to be looked up, or set</para>
 			</parameter>
 		</syntax>
 		<description>
-			<para>gets the value for a key in the cache store</para>
+			<para>gets or sets the value for a key in the cache store. when used in write mode, 
+			the function invokes the set memcached command.</para>
 		</description>
 		<see-also>
-			<ref type="application">mcdget</ref>
-			<ref type="application">mcdset</ref>
 			<ref type="application">mcdadd</ref>
 			<ref type="application">mcdreplace</ref>
 			<ref type="application">mcddelete</ref>
@@ -102,9 +101,6 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 			<parameter name="key" required="true">
 				<para>key to be looked up, or generated if missing</para>
 			</parameter>
-			<parameter name="timeout">
-				<para>the entry will expire after that many seconds (0 means store forever)</para>
-			</parameter>
 			<parameter name="value" required="true">
 				<para>data to store</para>
 			</parameter>
@@ -129,9 +125,6 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 			<parameter name="key" required="true">
 				<para>key to be used</para>
 			</parameter>
-			<parameter name="timeout">
-				<para>the entry will expire after that many seconds (0 means store forever)</para>
-			</parameter>
 			<parameter name="value" required="true">
 				<para>data to store</para>
 			</parameter>
@@ -139,11 +132,11 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 		<description>
 			<para>adds a value in the cache store, with the given key. if the key already exists, 
 			the operation will fail. the memcached server can auto-expire (and remove) the value 
-			after a given amount of time.</para>
+			after a given amount of time set in the configuration file, or by the MCDTTL dialplan 
+			variable.</para>
 		</description>
 		<see-also>
 			<ref type="function">MCD</ref>
-			<ref type="application">mcdset</ref>
 			<ref type="application">mcdreplace</ref>
 			<ref type="application">mcddelete</ref>
 		</see-also>
@@ -156,9 +149,6 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 			<parameter name="key" required="true">
 				<para>key to be looked up</para>
 			</parameter>
-			<parameter name="timeout">
-				<para>the entry will expire after that many seconds (0 means store forever)</para>
-			</parameter>
 			<parameter name="value" required="true">
 				<para>data to store</para>
 			</parameter>
@@ -166,11 +156,11 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 		<description>
 			<para>replaces the value in the cache store at the given key. if the key is missing, the 
 			operation will fail. the memcached server can auto-expire (and remove) the value after 
-			a given amount of time.</para>
+			a given amount of time set in the configuration file, or by the MCDTTL dialplan 
+			variable.</para>
 		</description>
 		<see-also>
 			<ref type="function">MCD</ref>
-			<ref type="application">mcdset</ref>
 			<ref type="application">mcdadd</ref>
 			<ref type="application">mcddelete</ref>
 		</see-also>
@@ -183,9 +173,6 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 			<parameter name="key" required="true">
 				<para>key to be looked up</para>
 			</parameter>
-			<parameter name="timeout">
-				<para>the entry will expire after that many seconds (0 means store forever)</para>
-			</parameter>
 			<parameter name="value" required="true">
 				<para>text to append</para>
 			</parameter>
@@ -195,7 +182,8 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 			missing, the operation will fail. the operation is atomic, in the sense that you dont 
 			have to get, then set the value and run the risk that another memcache client modified 
 			the value in the mean time. the memcached server can auto-expire (and remove) the value 
-			after a given amount of time.</para>
+			after a given amount of time set in the configuration file, or by the MCDTTL dialplan 
+			variable.</para>
 		</description>
 		<see-also>
 			<ref type="function">MCD</ref>
@@ -216,7 +204,6 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 		</description>
 		<see-also>
 			<ref type="function">MCD</ref>
-			<ref type="application">mcdset</ref>
 			<ref type="application">mcdadd</ref>
 			<ref type="application">mcdreplace</ref>
 		</see-also>
@@ -240,7 +227,7 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 			<para>on write, creates and initializes a memcache counter. on read, gets the value of a
 			counter in the cache store, after optionally incrementing or decrementing it with the 
 			given value. by default, the counters have an unlimited lifetime. to set a time to live 
-			for them, initialize the MCDTTL dialplan variable with the desired value (in seconds). 
+			for them, set the MCDTTL dialplan variable with the desired value (in seconds). 
 			the function only works if the binary protocol is activated (see config file).</para>
 		</description>
 		<see-also>
@@ -253,9 +240,14 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 STANDARD CONFIGURATION FILE (/etc/asterisk/memcache.conf)
 =========================================================
 [general]
-;binary_proto=yes                     ; using binary protocol for conversation with server; default is yes.
-                                      ;   note that the MCDCOUNTER() function is not happy if the protocol  
-                                      ;   is not binary
+ttl=0                                 ; sets the default time-to-live, in seconds, for the key-value entries added 
+                                      ;   or modified in the cache store. default value is 0, which means the entries
+                                      ;   will persist forever. (note that memcached does NOT store its database on 
+                                      ;   a non-volatile support, so the entries will be lost anyway when the 
+                                      ;   memcached server goes down.) the ttl value can be overridden in the dialplan 
+                                      ;   by the MCDTTL dialplan variable.
+;binary_proto=yes                     ; using binary protocol for conversation with server; default is yes. note that 
+                                      ;   the MCDCOUNTER() function is not happy if the protocol is not binary
 hash=default                          ; hashing mode (see libmemcached documentation); accepted values are default
                                       ;   (which is actually md5), md5, crc, fnv1_64, fnv1_64a, fnv1_32, fnv1_32a,
                                       ;   jenkins, hsieh, murmur. make sure whatever you select is actually
@@ -273,26 +265,28 @@ UNIT TESTING (using a dialplan macro)
 [macro-mcdtest]
 exten => s,1,noop(>>>> performing memcached tests)
 exten => s,n,answer()
-exten => s,n,mcdset(wrtest,,hello)
-exten => s,n,set(testresult=${MCD(wrtest)})
-exten => s,n,noop(>>>> test 1 (write / read): '${testresult}' == 'hello')
-exten => s,n,mcdappend(wrtest,, world!)
-exten => s,n,mcdget(testresult,wrtest)
-exten => s,n,noop(>>>> test 2 (append): '${testresult}' == 'hello world!')
-exten => s,n,mcdadd(wrtest,,something)
+exten => s,n,set(MCD(wrtest)=hello)
+exten => s,n,noop(>>>> test 1 (write / read): '${MCD(wrtest)}' == 'hello')
+exten => s,n,mcdappend(wrtest, world!)
+exten => s,n,noop(>>>> test 2 (append): '${MCD(wrtest)}' == 'hello world!')
+exten => s,n,mcdadd(wrtest,something)
 exten => s,n,noop(>>>> test 3 (add failure): error ${MCDRESULT} == 12)
-exten => s,n,mcdreplace(wrtest,10,goodbye world!)
-exten => s,n,mcdget(testresult,wrtest)
-exten => s,n,noop(>>>> test 4 (replace): '${testresult}' == 'goodbye world!')
+exten => s,n,mcdreplace(wrtest,goodbye world!)
+exten => s,n,noop(>>>> test 4 (replace): '${MCD(wrtest)}' == 'goodbye world!')
 exten => s,n,mcddelete(wrtest)
-exten => s,n,mcdget(testresult,wrtest)
+exten => s,n,set(testresult=${MCD(wrtest)})
 exten => s,n,noop(>>>> test 5 (delete + get failure): error: ${MCDRESULT} == 16)
-exten => s,n,set(MCDTTL=1))
-exten => s,n,set(MCDCOUNTER(counter)=678)
-exten => s,n,noop(>>>> test 6 (counter set & readout): ${MCDCOUNTER(counter)})
-exten => s,n,noop(>>>> test 7 (counter decrement by 12): ${MCDCOUNTER(counter,-12)})
+exten => s,n,set(MCDTTL=1)
+exten => s,n,mcdset(wrtest,hello again)
+exten => s,n,noop(>>>> test 6 (write w timeout): '${MCD(wrtest)}' == 'hello again')
 exten => s,n,wait(2)
-exten => s,n,noop(>>>> test 8 (counter expiration): ${MCDCOUNTER(counter)} / error: ${MCDRESULT})
+exten => s,n,set(testresult=${MCD(wrtest)})
+exten => s,n,noop(>>>> test 7 (failure to read a timeout value): error ${MCDRESULT} == 16)
+exten => s,n,set(MCDCOUNTER(counter)=678)
+exten => s,n,noop(>>>> test 8 (counter set & readout): ${MCDCOUNTER(counter)})
+exten => s,n,noop(>>>> test 9 (counter decrement by 12): ${MCDCOUNTER(counter,-12)})
+exten => s,n,wait(2)
+exten => s,n,noop(>>>> test 10 (counter expiration): ${MCDCOUNTER(counter)} / error: ${MCDRESULT})
 exten => s,n,hangup()
 */
 
@@ -310,6 +304,7 @@ static char *app_mcddelete =      "mcddelete";
 memcached_st *mcd;
 char keyprefix[65];
 static int use_binary_proto;
+static unsigned int mcdttl;
 
 /* 
   // returned errors in the MCDRESULT variable:
@@ -417,11 +412,19 @@ static int load_config(void) {
 		);
 	}
 
+	mcdttl = 0;
+	const char *ttlvalue;
+	if ((ttlvalue = ast_variable_retrieve(cfg, "general", "ttl")))
+		mcdttl = atoi(ttlvalue);
+	ast_log(LOG_DEBUG, "default time to live for key-value entries set to %d seconds\n", mcdttl);
+
 	use_binary_proto = 1;
 	const char *proto_mode;
 	if ((proto_mode = ast_variable_retrieve(cfg, "general", "binary_proto")))
 		use_binary_proto = ast_true(proto_mode);
 	rc = memcached_behavior_set(mcd, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL, use_binary_proto);
+	if (use_binary_proto == 0)
+		ast_log(LOG_WARNING, "not using memcached binary protocol; MCDCOUNTER() function will be unavailable\n");
 
 	const char *hashmode;
 	uint64_t hvalue = MEMCACHED_HASH_DEFAULT;
@@ -461,7 +464,7 @@ static int load_config(void) {
 
 }
 
-static int mcd_exec(struct ast_channel *chan, 
+static int mcd_read(struct ast_channel *chan, 
 	const char *cmd, char *parse, char *buffer, size_t buflen
 ) {
 // asterisk dialplan function that returns the contents of a memcached key
@@ -503,6 +506,56 @@ static int mcd_exec(struct ast_channel *chan,
 		} else
 			ast_copy_string(buffer, mcdval, buflen);
 	}
+	free(key);
+	return 0;
+
+}
+
+static int mcd_write(
+	struct ast_channel *chan, const char *cmd, char *parse, const char *value
+) {
+	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
+	unsigned int timeout = mcdttl; 
+
+	mcd_set_operation_result(chan, MEMCACHED_SUCCESS);
+
+	// the app argument is the key to set
+	if (ast_strlen_zero(parse)) {
+		ast_log(LOG_WARNING, "MCD() requires argument (key)\n");
+		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
+		free(key);
+		return 0;
+	}
+	if (strlen(keyprefix) + strlen(parse) > MEMCACHED_MAX_KEY - 1) {
+		ast_log(LOG_WARNING, "resulting key too long, max length is %d\n", MEMCACHED_MAX_KEY);
+		mcd_set_operation_result(chan, MEMCACHED_KEY_TOO_LONG);
+		free(key);
+		return 0;
+	}
+	strcpy(key, keyprefix);
+	strcat(key, parse);
+	ast_log(LOG_DEBUG, "setting value for key: %s=%s\n", key, value);
+
+	const char *ttlval = pbx_builtin_getvar_helper(chan, "MCDTTL");
+	if (ttlval) {
+		timeout = atoi(ttlval);
+		if ((timeout == 0) && (strcmp(ttlval, "0") != 0)) {
+			ast_log(LOG_WARNING, "dialplan variable MCDTTL=%s (not numeric), will use time-to-live value in the config file\n", ttlval);
+			timeout = mcdttl;
+		}
+	}
+	ast_log(LOG_DEBUG, "timeout: %d\n", timeout);
+
+	memcached_return_t mcdret = MEMCACHED_FAILURE;
+	mcdret = memcached_set(mcd, 
+		key, strlen(key), value, strlen(value), (time_t)timeout, (uint32_t)0
+	);
+	if (mcdret)
+		ast_log(LOG_WARNING, 
+			"memcached_%s() error %d: %s\n", cmd, mcdret, memcached_strerror(mcd, mcdret)
+		);
+
+	mcd_set_operation_result(chan, mcdret);
 	free(key);
 	return 0;
 
@@ -579,16 +632,15 @@ static int mcdget_exec(struct ast_channel *chan, const char *data) {
 static void mcd_putdata(const char *cmd, struct ast_channel *chan, const char *data) {
 	char *argcopy;
 	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
-	unsigned int timeout = 0; 
+	unsigned int timeout = mcdttl; 
 
 	// parse the app arguments
 	AST_DECLARE_APP_ARGS(args,
 		AST_APP_ARG(key);
-		AST_APP_ARG(timeout);
 		AST_APP_ARG(val);
 	);
 	if (ast_strlen_zero(data)) {
-		ast_log(LOG_WARNING, "app mcd%s requires arguments (key,[timeout],value)\n", cmd);
+		ast_log(LOG_WARNING, "app mcd%s requires arguments (key,value)\n", cmd);
 		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
 		free(key);
 		return;
@@ -611,35 +663,38 @@ static void mcd_putdata(const char *cmd, struct ast_channel *chan, const char *d
 		free(key);
 		return;
 	}
-	if (!ast_strlen_zero(args.timeout)) {
-		timeout = atoi(args.timeout);
-		if ((timeout == 0) && (strcmp(args.timeout, "0") != 0))
-			ast_log(LOG_WARNING, "timeout value %s not numeric, will force to 0\n", args.timeout);
-		ast_log(LOG_DEBUG, "timeout: %d\n", timeout);
-	} else
-		timeout = 0;
-	if (!ast_strlen_zero(args.val)) {
+
+	if (!ast_strlen_zero(args.val))
 		ast_log(LOG_DEBUG, "value: %s\n", args.val);
-	} else {
+	else
 		ast_log(LOG_WARNING, "value is set to zero-length\n");
+
+	const char *ttlval = pbx_builtin_getvar_helper(chan, "MCDTTL");
+	if (ttlval) {
+		timeout = atoi(ttlval);
+		if ((timeout == 0) && (strcmp(ttlval, "0") != 0)) {
+			ast_log(LOG_WARNING, "dialplan variable MCDTTL=%s (not numeric), will use time-to-live value in the config file\n", ttlval);
+			timeout = mcdttl;
+		}
 	}
+	ast_log(LOG_DEBUG, "timeout: %d\n", timeout);
 
 	memcached_return_t mcdret = MEMCACHED_FAILURE;
 	if (strcmp(cmd, "set") == 0)
 		mcdret = memcached_set(mcd, 
-			key, strlen(key), args.val, strlen(args.val), timeout, (uint32_t)0
+			key, strlen(key), args.val, strlen(args.val), (time_t)timeout, (uint32_t)0
 		);
 	else if (strcmp(cmd, "add") == 0)
 		mcdret = memcached_add(mcd, 
-			key, strlen(key), args.val, strlen(args.val), timeout, (uint32_t)0
+			key, strlen(key), args.val, strlen(args.val), (time_t)timeout, (uint32_t)0
 		);
 	else if (strcmp(cmd, "replace") == 0)
 		mcdret = memcached_replace(mcd, 
-			key, strlen(key), args.val, strlen(args.val), timeout, (uint32_t)0
+			key, strlen(key), args.val, strlen(args.val), (time_t)timeout, (uint32_t)0
 		);
 	else if (strcmp(cmd, "append") == 0)
 		mcdret = memcached_append(mcd, 
-			key, strlen(key), args.val, strlen(args.val), timeout, (uint32_t)0
+			key, strlen(key), args.val, strlen(args.val), (time_t)timeout, (uint32_t)0
 		);
 
 	if (mcdret)
@@ -793,7 +848,7 @@ static int mcdcounter_write(
 ) {
 	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
 	unsigned int counter = 0;
-	time_t timeout = 0; 
+	unsigned int timeout = mcdttl; 
 
 	if (use_binary_proto == 0) {
 		ast_log(LOG_WARNING, "MCDCOUNTER() only available when binary protocol is selected\n");
@@ -819,8 +874,15 @@ static int mcdcounter_write(
 	strcat(key, parse);
 	ast_log(LOG_DEBUG, "setting counter in key: %s\n", key);
 
-	timeout = (time_t)atoi(pbx_builtin_getvar_helper(chan, "MCDTTL"));
-	ast_log(LOG_DEBUG, "timeout: %d\n", (int)timeout);
+	const char *ttlval = pbx_builtin_getvar_helper(chan, "MCDTTL");
+	if (ttlval) {
+		timeout = atoi(ttlval);
+		if ((timeout == 0) && (strcmp(ttlval, "0") != 0)) {
+			ast_log(LOG_WARNING, "dialplan variable MCDTTL=%s (not numeric), will use time-to-live value in the config file\n", ttlval);
+			timeout = mcdttl;
+		}
+	}
+	ast_log(LOG_DEBUG, "timeout: %d\n", timeout);
 
 	counter = atoi(value);
 	if ((counter == 0) && (strcmp(value, "0") != 0))
@@ -829,7 +891,7 @@ static int mcdcounter_write(
 
 	memcached_return_t mcdret;
 	uint64_t valuenow;
-	mcdret = memcached_increment_with_initial(mcd, key, strlen(key), 0, counter, timeout, &valuenow);
+	mcdret = memcached_increment_with_initial(mcd, key, strlen(key), 0, counter, (time_t)timeout, &valuenow);
 	if (mcdret)
 		ast_log(LOG_WARNING, 
 			"memcached_increment_with_initial() error %d: %s\n", mcdret, memcached_strerror(mcd, mcdret)
@@ -842,7 +904,8 @@ static int mcdcounter_write(
 
 static struct ast_custom_function acf_mcd = {
 	.name = "MCD",
-	.read = mcd_exec
+	.read = mcd_read,
+	.write = mcd_write
 };
 
 static struct ast_custom_function acf_mcdcounter = {

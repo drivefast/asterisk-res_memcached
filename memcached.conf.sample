@@ -1,7 +1,12 @@
 [general]
-;binary_proto=yes                     ; using binary protocol for conversation with server; default is yes.
-                                      ;   note that the MCDCOUNTER() function is not happy if the protocol  
-                                      ;   is not binary
+ttl=0                                 ; sets the default time-to-live, in seconds, for the key-value entries added 
+                                      ;   or modified in the cache store. default value is 0, which means the entries
+                                      ;   will persist forever. (note that memcached does NOT store its database on 
+                                      ;   a non-volatile support, so the entries will be lost anyway when the 
+                                      ;   memcached server goes down.) the ttl value can be overridden in the dialplan 
+                                      ;   by the MCDTTL dialplan variable.
+;binary_proto=yes                     ; using binary protocol for conversation with server; default is yes. note that 
+                                      ;   the MCDCOUNTER() function is not happy if the protocol is not binary
 hash=default                          ; hashing mode (see libmemcached documentation); accepted values are default
                                       ;   (which is actually md5), md5, crc, fnv1_64, fnv1_64a, fnv1_32, fnv1_32a,
                                       ;   jenkins, hsieh, murmur. make sure whatever you select is actually
