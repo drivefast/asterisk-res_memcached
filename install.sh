@@ -4,3 +4,5 @@ if [ ! -s include/asterisk.h ] ; then
 fi
 cp asterisk-res_memcached/res_memcached.c res/.
 cp asterisk-res_memcached/memcached.conf.sample configs/.
+echo "... done; please follow the next steps in the README file"
+
