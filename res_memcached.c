@@ -52,7 +52,8 @@ ASTERISK_FILE_VERSION(__FILE__, "$Revision: 200656 $")
 #include "asterisk/utils.h"
 
 #include <stdlib.h>
-#include <libmemcached/memcached.h>
+#include <libmemcached-1.0/memcached.h>
+#include <libmemcachedutil-1.0/util.h>
 
 /*** DOCUMENTATION
 	<function name="MCD" language="en_US">
@@ -252,7 +253,7 @@ hash=default                          ; hashing mode (see libmemcached documenta
                                       ;   (which is actually md5), md5, crc, fnv1_64, fnv1_64a, fnv1_32, fnv1_32a,
                                       ;   jenkins, hsieh, murmur. make sure whatever you select is actually
                                       ;   supported by the library ecosystem on your machine
-prefixkey=                            ; whatever string you specify here is prepended to each key that is retrieved
+keyprefix=                            ; whatever string you specify here is prepended to each key that is retrieved
                                       ;   or stored, so that you can create some sort of a "domain" for your
                                       ;   asterisk server
 server=localhost:11211                ; multiple 'server=' entries will create a cluster of servers to connect to;
@@ -270,7 +271,7 @@ exten => s,n,noop(>>>> test 1 (write / read): '${MCD(wrtest)}' == 'hello')
 exten => s,n,mcdappend(wrtest, world!)
 exten => s,n,noop(>>>> test 2 (append): '${MCD(wrtest)}' == 'hello world!')
 exten => s,n,mcdadd(wrtest,something)
-exten => s,n,noop(>>>> test 3 (add failure): error ${MCDRESULT} == 12)
+exten => s,n,noop(>>>> test 3 (add failure): error ${MCDRESULT} == 14ß)
 exten => s,n,mcdreplace(wrtest,goodbye world!)
 exten => s,n,noop(>>>> test 4 (replace): '${MCD(wrtest)}' == 'goodbye world!')
 exten => s,n,mcddelete(wrtest)
@@ -297,11 +298,12 @@ static char *app_mcdreplace =     "mcdreplace";
 static char *app_mcdappend =      "mcdappend";
 static char *app_mcddelete =      "mcddelete";
 
-#define CONFIG_FILE_NAME          "memcache.conf"
+#define CONFIG_FILE_NAME          "memcached.conf"
 #define MAX_ASTERISK_VARLEN       4096
 
 // memcache properties
-memcached_st *mcd;
+struct timespec to;
+memcached_pool_st *mcdpool;
 char keyprefix[65];
 static int use_binary_proto;
 static unsigned int mcdttl;
@@ -366,51 +368,41 @@ static void mcd_set_operation_result(struct ast_channel *chan, int result) {
 	pbx_builtin_setvar_helper(chan, "MCDRESULT", numresult);
 }
 
-static int load_config(void) {
+static int mcd_load_config(void) {
+
+	// initialize the timeout that we wait for a memcached pool operation to complete
+	to.tv_sec = 0; to.tv_nsec = 500000;
+
 	struct ast_config *cfg;
 	struct ast_flags config_flags = { 0 };
 
 	if (!(cfg = ast_config_load(CONFIG_FILE_NAME, config_flags))) {
+		ast_log(LOG_ERROR, "missing memcached resource config file '%s'\n", CONFIG_FILE_NAME);
 		return 1;
 	} else if (cfg == CONFIG_STATUS_FILEINVALID) {
-		ast_log(LOG_ERROR, "memcached config file " CONFIG_FILE_NAME " is in an invalid format.\n");
+		ast_log(LOG_ERROR, "memcached resource config file '" CONFIG_FILE_NAME "' invalid format.\n");
 		return 1;
 	}
 
-	// create memcached environment and connect to the servers cluster
-	mcd = memcached_create(NULL);
-	ast_log(LOG_DEBUG, "using libmemcached %s, more info at http://libmemcached.org\n", 
-		memcached_lib_version()
-	);
-	memcached_return_t rc;
-
-	char servername[256]; unsigned int port;
+    // parse server names for memcached from the [general] section of the config file
+    char mcd_config[2048]; mcd_config[0] = 0;
 	struct ast_variable *serverentry = ast_variable_browse(cfg, "general");
 	for ( ; serverentry; serverentry = serverentry->next) {
 		if (strcasecmp(serverentry->name, "server") == 0) {
-			strncpy(servername, serverentry->value, 255);
-			port = 0;
-			char *sep = strchr(servername, ':'); 
-			if (sep) {
-				sep[0] = 0;
-				port = atoi((char *)(++sep));
-			}
-			if (port == 0) port = 11211;
-			rc = memcached_server_add(mcd, servername, port);
-			if (rc)
-				ast_log(LOG_WARNING, "failed to add memcached server %s:%d - %s\n", 
-					servername, port, memcached_strerror(mcd, rc)
-				);
-			else
-				ast_log(LOG_DEBUG, "added memcached server %s:%d\n", servername, port);
+	    	strcat(mcd_config, "--SERVER=");
+    		strcat(mcd_config, serverentry->value);
+    		strcat(mcd_config, " ");
 		}
 	}
-	if (memcached_server_count(mcd) == 0) {
-		rc = memcached_server_add(mcd,  "localhost", 11211);
-		ast_log(LOG_WARNING, 
-			"no memcached servers specified, doing a desperate attempt for localhost:11211\n"
-		);
-	}
+    if (strstr(mcd_config, "--SERVER=") == 0) {
+        ast_log(LOG_DEBUG, "Expecting memcache server on 127.0.0.1\n");
+        strcpy(mcd_config, "--SERVER=127.0.0.1 ");
+    }
+    ast_log(LOG_DEBUG, "res_memcached configured servers: '%s'\n", mcd_config);
+//	strcat(mcd_config, "--SORT-HOSTS ");  not a good idea: turns out that the documentation says:
+//                                        "Enabling this will cause hosts that are added to be placed 
+//                                         in the host list in sorted order. This will defeat 
+//                                         consisten hashing."
 
 	mcdttl = 0;
 	const char *ttlvalue;
@@ -422,42 +414,31 @@ static int load_config(void) {
 	const char *proto_mode;
 	if ((proto_mode = ast_variable_retrieve(cfg, "general", "binary_proto")))
 		use_binary_proto = ast_true(proto_mode);
-	rc = memcached_behavior_set(mcd, MEMCACHED_BEHAVIOR_BINARY_PROTOCOL, use_binary_proto);
-	if (use_binary_proto == 0)
-		ast_log(LOG_WARNING, "not using memcached binary protocol; MCDCOUNTER() function will be unavailable\n");
-
+//	if (use_binary_proto)
+//		strcat(mcd_config, "--BINARY-PROTOCOL ");
+//	else
+//		ast_log(LOG_WARNING, "not using memcached binary protocol; MCDCOUNTER() function will be unavailable\n");
+/*
 	const char *hashmode;
-	uint64_t hvalue = MEMCACHED_HASH_DEFAULT;
 	if ((hashmode = ast_variable_retrieve(cfg, "general", "hash"))) {
-		if (strcasecmp(hashmode, "default") == 0)
-			hvalue = MEMCACHED_HASH_DEFAULT;
-		else if (strcasecmp(hashmode, "md5") == 0)
-			hvalue = MEMCACHED_HASH_MD5;
-		else if (strcasecmp(hashmode, "crc") == 0)
-			hvalue = MEMCACHED_HASH_CRC;
-		else if (strcasecmp(hashmode, "fnv1_64") == 0)
-			hvalue = MEMCACHED_HASH_FNV1_64;
-		else if (strcasecmp(hashmode, "fnv1a_64") == 0)
-			hvalue = MEMCACHED_HASH_FNV1A_64;
-		else if (strcasecmp(hashmode, "fnv1_32") == 0)
-			hvalue = MEMCACHED_HASH_FNV1_32;
-		else if (strcasecmp(hashmode, "fnv1a_32") == 0)
-			hvalue = MEMCACHED_HASH_FNV1A_32;
-		else if (strcasecmp(hashmode, "jenkins") == 0)
-			hvalue = MEMCACHED_HASH_JENKINS;
-		else if (strcasecmp(hashmode, "hsieh") == 0)
-			hvalue = MEMCACHED_HASH_HSIEH;
-		else if (strcasecmp(hashmode, "murmur") == 0)
-			hvalue = MEMCACHED_HASH_MURMUR;
+		strcat(mcd_config, "--HASH=");
+		strcat(mcd_config, hashmode);
+		strcat(mcd_config, " ");
 	}
-	rc = memcached_behavior_set(mcd, MEMCACHED_BEHAVIOR_HASH, hvalue);
-
+*/
 	const char *kp;
-	if ((kp = ast_variable_retrieve(cfg, "general", "keyprefix")))
-		strncpy(keyprefix, kp, sizeof(keyprefix));
+	if ((kp = ast_variable_retrieve(cfg, "general", "keyprefix"))) {
+		strcat(mcd_config, "--NAMESPACE=");
+		strcat(mcd_config, kp);
+		strcat(mcd_config, " ");
+	}
+
+    // launch memcached client (pool of)
+    mcd_config[strlen(mcd_config) - 1] = 0;
+    if ((mcdpool = memcached_pool(mcd_config, strlen(mcd_config))))
+	    ast_log(LOG_DEBUG, "res_memcached starting with config: '%s'\n", mcd_config);
 	else
-		keyprefix[0] = 0;
-	keyprefix[64] = 0;
+	    ast_log(LOG_ERROR, "res_memcached failed to start with config: '%s'\n", mcd_config);
 
 	ast_config_destroy(cfg);
 	return 0;
@@ -469,6 +450,13 @@ static int mcd_read(struct ast_channel *chan,
 ) {
 // asterisk dialplan function that returns the contents of a memcached key
 
+	memcached_return_t rc;
+	memcached_st *mcd = memcached_pool_fetch(mcdpool, &to, &rc);
+	if (rc) {
+        ast_log(LOG_WARNING, "mcd_read: memcached pool error: %d\n", rc);
+		return 0;
+    }
+
 	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
 	buffer[0] = 0;
 
@@ -478,14 +466,7 @@ static int mcd_read(struct ast_channel *chan,
 		free(key);
 		return 0;
 	}
-	if (strlen(keyprefix) + strlen(parse) > MEMCACHED_MAX_KEY - 1) {
-		ast_log(LOG_WARNING, "resulting key too long, max length is %d\n", MEMCACHED_MAX_KEY);
-		mcd_set_operation_result(chan, MEMCACHED_KEY_TOO_LONG);
-		free(key);
-		return 0;
-	}
-	strcpy(key, keyprefix);
-	strcat(key, parse);
+	strcpy(key, parse);
 
 	memcached_return_t mcdret; size_t szmcdval; uint32_t mcdflags;
 	char *mcdval = memcached_get(mcd, key, strlen(key), &szmcdval, &mcdflags, &mcdret);
@@ -498,15 +479,14 @@ static int mcd_read(struct ast_channel *chan,
 		if (szmcdval > MAX_ASTERISK_VARLEN) {
 			ast_log(LOG_WARNING, 
 				"returned value (%d bytes) longer that what an asterisk variable can accomodate (%d bytes)\n",
-				szmcdval, MAX_ASTERISK_VARLEN
+				(int)szmcdval, MAX_ASTERISK_VARLEN
 			);
 			mcd_set_operation_result(chan, MEMCACHED_VALUE_TOO_LONG);
-			free(key);
-			return 0;
 		} else
 			ast_copy_string(buffer, mcdval, buflen);
 	}
 	free(key);
+	memcached_pool_release(mcdpool, mcd);
 	return 0;
 
 }
@@ -514,6 +494,14 @@ static int mcd_read(struct ast_channel *chan,
 static int mcd_write(
 	struct ast_channel *chan, const char *cmd, char *parse, const char *value
 ) {
+
+	memcached_return_t rc;
+	memcached_st *mcd = memcached_pool_fetch(mcdpool, &to, &rc);
+	if (rc) {
+        ast_log(LOG_WARNING, "mcd_write: memcached pool error: %d\n", rc);
+		return 0;
+    }
+
 	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
 	unsigned int timeout = mcdttl; 
 
@@ -526,14 +514,7 @@ static int mcd_write(
 		free(key);
 		return 0;
 	}
-	if (strlen(keyprefix) + strlen(parse) > MEMCACHED_MAX_KEY - 1) {
-		ast_log(LOG_WARNING, "resulting key too long, max length is %d\n", MEMCACHED_MAX_KEY);
-		mcd_set_operation_result(chan, MEMCACHED_KEY_TOO_LONG);
-		free(key);
-		return 0;
-	}
-	strcpy(key, keyprefix);
-	strcat(key, parse);
+	strcpy(key, parse);
 	ast_log(LOG_DEBUG, "setting value for key: %s=%s\n", key, value);
 
 	const char *ttlval = pbx_builtin_getvar_helper(chan, "MCDTTL");
@@ -557,11 +538,20 @@ static int mcd_write(
 
 	mcd_set_operation_result(chan, mcdret);
 	free(key);
+	memcached_pool_release(mcdpool, mcd);
 	return 0;
 
 }
 
 static int mcdget_exec(struct ast_channel *chan, const char *data) {
+
+	memcached_return_t rc;
+	memcached_st *mcd = memcached_pool_fetch(mcdpool, &to, &rc);
+	if (rc) {
+        ast_log(LOG_WARNING, "mcdget_exec: memcached pool error: %d\n", rc);
+		return 0;
+    }
+
 	char *argcopy;
 	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
 
@@ -576,36 +566,33 @@ static int mcdget_exec(struct ast_channel *chan, const char *data) {
 		ast_log(LOG_WARNING, "app mcdget requires arguments (varname,key)\n");
 		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
 		free(key);
+		memcached_pool_release(mcdpool, mcd);
 		return 0;
 	}
 	argcopy = ast_strdupa(data);
 	AST_STANDARD_APP_ARGS(args, argcopy);
-	if (!ast_strlen_zero(args.varname)) {
-		ast_log(LOG_DEBUG, "setting result into variable '%s'\n", args.varname);
-		pbx_builtin_setvar_helper(chan, args.varname, "");
-	} else {
-		ast_log(LOG_WARNING, "a valid dialplan variable name is needed as first argument\n");
-		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
-		free(key);
-		return 0;
-	}
-	if (!ast_strlen_zero(args.key)) {
-		if (strlen(keyprefix) + strlen(args.key) > MEMCACHED_MAX_KEY - 1) {
-			ast_log(LOG_WARNING, "resulting key too long, max length is %d\n", MEMCACHED_MAX_KEY);
-			mcd_set_operation_result(chan, MEMCACHED_KEY_TOO_LONG);
-			free(key);
-			return 0;
-		}
-		strcpy(key, keyprefix);
-		strcat(key, args.key);
-		ast_log(LOG_DEBUG, "key: %s\n", key);
-	} else {
+
+	if (ast_strlen_zero(args.key)) {
 		ast_log(LOG_WARNING, "key needed\n");
 		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
 		free(key);
+		memcached_pool_release(mcdpool, mcd);
 		return 0;
 	}
+	strcpy(key, args.key);
+	ast_log(LOG_DEBUG, "key: %s\n", key);
 
+	if (ast_strlen_zero(args.varname)) {
+		ast_log(LOG_WARNING, "a valid dialplan variable name is needed as first argument\n");
+		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
+		free(key);
+		memcached_pool_release(mcdpool, mcd);
+		return 0;
+	}
+	ast_log(LOG_DEBUG, "setting result into variable '%s'\n", args.varname);
+	pbx_builtin_setvar_helper(chan, args.varname, "");
+
+	// get data for key
 	memcached_return_t mcdret; size_t szmcdval; uint32_t mcdflags;
 	char *mcdval = memcached_get(mcd, key, strlen(key), &szmcdval, &mcdflags, &mcdret);
 	if (mcdret)
@@ -617,19 +604,26 @@ static int mcdget_exec(struct ast_channel *chan, const char *data) {
 		if (szmcdval > MAX_ASTERISK_VARLEN) {
 			ast_log(LOG_WARNING, 
 				"returned value (%d bytes) longer that what an asterisk variable can accomodate (%d bytes)\n",
-				szmcdval, MAX_ASTERISK_VARLEN
+				(int)szmcdval, MAX_ASTERISK_VARLEN
 			);
 			mcd_set_operation_result(chan, MEMCACHED_VALUE_TOO_LONG);
-			free(key);
-			return 0;
 		} else
 			pbx_builtin_setvar_helper(chan, args.varname, mcdval);
 	}
 	free(key);
+	memcached_pool_release(mcdpool, mcd);
 	return 0;
 }
 
 static void mcd_putdata(const char *cmd, struct ast_channel *chan, const char *data) {
+
+	memcached_return_t rc;
+	memcached_st *mcd = memcached_pool_fetch(mcdpool, &to, &rc);
+	if (rc) {
+        ast_log(LOG_WARNING, "mcd_putdata: memcached pool error: %d\n", rc);
+		return;
+    }
+
 	char *argcopy;
 	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
 	unsigned int timeout = mcdttl; 
@@ -643,26 +637,21 @@ static void mcd_putdata(const char *cmd, struct ast_channel *chan, const char *d
 		ast_log(LOG_WARNING, "app mcd%s requires arguments (key,value)\n", cmd);
 		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
 		free(key);
+		memcached_pool_release(mcdpool, mcd);
 		return;
 	}
 	argcopy = ast_strdupa(data);
 	AST_STANDARD_APP_ARGS(args, argcopy);
-	if (!ast_strlen_zero(args.key)) {
-		if (strlen(keyprefix) + strlen(args.key) > MEMCACHED_MAX_KEY - 1) {
-			ast_log(LOG_WARNING, "resulting key too long, max length is %d\n", MEMCACHED_MAX_KEY);
-			mcd_set_operation_result(chan, MEMCACHED_KEY_TOO_LONG);
-			free(key);
-			return;
-		}
-		strcpy(key, keyprefix);
-		strcat(key, args.key);
-		ast_log(LOG_DEBUG, "key: %s\n", key);
-	} else {
+
+	if (ast_strlen_zero(args.key)) {
 		ast_log(LOG_WARNING, "key needed\n");
 		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
 		free(key);
+		memcached_pool_release(mcdpool, mcd);
 		return;
 	}
+	strcpy(key, args.key);
+	ast_log(LOG_DEBUG, "key: %s\n", key);
 
 	if (!ast_strlen_zero(args.val))
 		ast_log(LOG_DEBUG, "value: %s\n", args.val);
@@ -704,6 +693,8 @@ static void mcd_putdata(const char *cmd, struct ast_channel *chan, const char *d
 
 	mcd_set_operation_result(chan, mcdret);
 	free(key);
+	memcached_pool_release(mcdpool, mcd);
+	return;
 
 }
 
@@ -728,6 +719,14 @@ static int mcdappend_exec(struct ast_channel *chan, const char *data) {
 }
 
 static int mcddelete_exec(struct ast_channel *chan, const char *data) {
+
+	memcached_return_t rc;
+	memcached_st *mcd = memcached_pool_fetch(mcdpool, &to, &rc);
+	if (rc) {
+        ast_log(LOG_WARNING, "mcddelete_exec: memcached pool error: %d\n", rc);
+		return 0;
+    }
+
 	char *argcopy;
 	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
 
@@ -741,26 +740,21 @@ static int mcddelete_exec(struct ast_channel *chan, const char *data) {
 		ast_log(LOG_WARNING, "app mcddelete requires argument (key)\n");
 		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
 		free(key);
+		memcached_pool_release(mcdpool, mcd);
 		return 0;
 	}
 	argcopy = ast_strdupa(data);
 	AST_STANDARD_APP_ARGS(args, argcopy);
-	if (!ast_strlen_zero(args.key)) {
-		if (strlen(keyprefix) + strlen(args.key) > MEMCACHED_MAX_KEY - 1) {
-			ast_log(LOG_WARNING, "resulting key too long, max length is %d\n", MEMCACHED_MAX_KEY);
-			mcd_set_operation_result(chan, MEMCACHED_KEY_TOO_LONG);
-			free(key);
-			return 0;
-		}
-		strcpy(key, keyprefix);
-		strcat(key, args.key);
-		ast_log(LOG_DEBUG, "key: %s\n", key);
-	} else {
+	
+	if (ast_strlen_zero(args.key)) {
 		ast_log(LOG_WARNING, "key needed\n");
 		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
 		free(key);
+		memcached_pool_release(mcdpool, mcd);
 		return 0;
 	}
+	strcpy(key, args.key);
+	ast_log(LOG_DEBUG, "key: %s\n", key);
 
 	memcached_return_t mcdret = memcached_delete(mcd, key, strlen(key), (time_t)0);
 	if (mcdret)
@@ -769,6 +763,7 @@ static int mcddelete_exec(struct ast_channel *chan, const char *data) {
 		);
 	mcd_set_operation_result(chan, mcdret);
 	free(key);
+	memcached_pool_release(mcdpool, mcd);
 	return 0;
 
 }
@@ -776,16 +771,23 @@ static int mcddelete_exec(struct ast_channel *chan, const char *data) {
 static int mcdcounter_read(
 	struct ast_channel *chan, const char *cmd, char *parse, char *buffer, size_t buflen
 ) {
-	char *argcopy;
-	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
-	int increment = 0; 
 
 	if (use_binary_proto == 0) {
 		ast_log(LOG_WARNING, "MCDCOUNTER() only available when binary protocol is selected\n");
 		mcd_set_operation_result(chan, MEMCACHED_BINARY_PROTO_NEEDED);
-		free(key);
 		return 0;
 	}
+
+	memcached_return_t rc;
+	memcached_st *mcd = memcached_pool_fetch(mcdpool, &to, &rc);
+	if (rc) {
+        ast_log(LOG_WARNING, "mcdcounter_read: memcached pool error: %d\n", rc);
+		return 0;
+    }
+
+	char *argcopy;
+	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
+	int increment = 0; 
 
 	// parse the app arguments
 	AST_DECLARE_APP_ARGS(args,
@@ -796,29 +798,24 @@ static int mcdcounter_read(
 		ast_log(LOG_WARNING, "MCDCOUNTER() requires arguments (key[,increment])\n");
 		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
 		free(key);
+		memcached_pool_release(mcdpool, mcd);
 		return 0;
 	}
 	argcopy = ast_strdupa(parse);
 	AST_STANDARD_APP_ARGS(args, argcopy);
+
 	if (!ast_strlen_zero(args.key)) {
-		if (strlen(keyprefix) + strlen(args.key) > MEMCACHED_MAX_KEY - 1) {
-			ast_log(LOG_WARNING, "resulting key too long, max length is %d\n", MEMCACHED_MAX_KEY);
-			mcd_set_operation_result(chan, MEMCACHED_KEY_TOO_LONG);
-			free(key);
-			return 0;
-		}
-		strcpy(key, keyprefix);
-		strcat(key, args.key);
-		ast_log(LOG_DEBUG, "key: %s\n", key);
-	} else {
 		ast_log(LOG_WARNING, "key needed\n");
 		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
 		free(key);
+		memcached_pool_release(mcdpool, mcd);
 		return 0;
 	}
-	if (!ast_strlen_zero(args.increment)) {
+	strcpy(key, args.key);
+	ast_log(LOG_DEBUG, "key: %s\n", key);
+
+	if (!ast_strlen_zero(args.increment))
 		increment = atoi(args.increment);
-	}
 	ast_log(LOG_DEBUG, "increment %s by %d\n", key, increment);
 
 	uint64_t newval = 0; 
@@ -839,6 +836,7 @@ static int mcdcounter_read(
 		ast_copy_string(buffer, newvalstr, buflen);
 	}
 	free(key);
+	memcached_pool_release(mcdpool, mcd);
 	return 0;
 
 }
@@ -846,32 +844,33 @@ static int mcdcounter_read(
 static int mcdcounter_write(
 	struct ast_channel *chan, const char *cmd, char *parse, const char *value
 ) {
-	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
-	unsigned int counter = 0;
-	unsigned int timeout = mcdttl; 
 
 	if (use_binary_proto == 0) {
 		ast_log(LOG_WARNING, "MCDCOUNTER() only available when binary protocol is selected\n");
 		mcd_set_operation_result(chan, MEMCACHED_BINARY_PROTO_NEEDED);
-		free(key);
 		return 0;
 	}
+
+	memcached_return_t rc;
+	memcached_st *mcd = memcached_pool_fetch(mcdpool, &to, &rc);
+	if (rc) {
+        ast_log(LOG_WARNING, "mcdcounter_write: memcached pool error: %d\n", rc);
+		return 0;
+    }
+
+	char *key = (char *)ast_malloc(MEMCACHED_MAX_KEY);
+	unsigned int counter = 0;
+	unsigned int timeout = mcdttl; 
 
 	// the app argument is the key to set
 	if (ast_strlen_zero(parse)) {
 		ast_log(LOG_WARNING, "MCDCOUNTER() requires argument (key)\n");
 		mcd_set_operation_result(chan, MEMCACHED_ARGUMENT_NEEDED);
 		free(key);
+		memcached_pool_release(mcdpool, mcd);
 		return 0;
 	}
-	if (strlen(keyprefix) + strlen(parse) > MEMCACHED_MAX_KEY - 1) {
-		ast_log(LOG_WARNING, "resulting key too long, max length is %d\n", MEMCACHED_MAX_KEY);
-		mcd_set_operation_result(chan, MEMCACHED_KEY_TOO_LONG);
-		free(key);
-		return 0;
-	}
-	strcpy(key, keyprefix);
-	strcat(key, parse);
+	strcpy(key, parse);
 	ast_log(LOG_DEBUG, "setting counter in key: %s\n", key);
 
 	const char *ttlval = pbx_builtin_getvar_helper(chan, "MCDTTL");
@@ -898,6 +897,7 @@ static int mcdcounter_write(
 		);
 	mcd_set_operation_result(chan, mcdret);
 	free(key);
+	memcached_pool_release(mcdpool, mcd);
 	return 0;
 
 }
@@ -916,7 +916,7 @@ static struct ast_custom_function acf_mcdcounter = {
 
 static int load_module(void) {
 	int ret = 0;
-	ret = load_config();
+	ret = mcd_load_config();
 	ret |= ast_custom_function_register(&acf_mcd);
 	ret |= ast_register_application_xml(app_mcdget, mcdget_exec);
 	ret |= ast_register_application_xml(app_mcdset, mcdset_exec);
@@ -929,7 +929,7 @@ static int load_module(void) {
 }
 
 static int unload_module(void) {
-	memcached_free(mcd);
+	memcached_pool_destroy(mcdpool);
 	int ret = 0;
 	ret |= ast_custom_function_unregister(&acf_mcd);
 	ret |= ast_unregister_application(app_mcdset);

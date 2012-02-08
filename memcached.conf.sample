@@ -11,7 +11,7 @@ hash=default                          ; hashing mode (see libmemcached documenta
                                       ;   (which is actually md5), md5, crc, fnv1_64, fnv1_64a, fnv1_32, fnv1_32a,
                                       ;   jenkins, hsieh, murmur. make sure whatever you select is actually
                                       ;   supported by the library ecosystem on your machine
-prefixkey=                            ; whatever string you specify here is prepended to each key that is retrieved
+keyprefix=                            ; whatever string you specify here is prepended to each key that is retrieved
                                       ;   or stored, so that you can create some sort of a "domain" for your
                                       ;   asterisk server
 server=localhost:11211                ; multiple 'server=' entries will create a cluster of servers to connect to;
@@ -19,3 +19,11 @@ server=localhost:11211                ; multiple 'server=' entries will create a
                                       ;   the default memcached port is 11211. if no entries, the module will at
                                       ;   least attempt to connect to a memcached running on the localhost
 
+
+;;;;;;;;;;;;;  UGLY NOTE ;;;;;;;;;;;;;;
+; apparently, creating a memcached connection pool in libmemcached 1.0.4 fails 
+; when the parameters --BINARY-PROTOCOL and --HASH= are submitted. therefore 
+; we cannot select the binary protocol, and as such the MCDCOUNTER() functions 
+; fail. hopefully i will find a workaround soon, or libmemcached 1.0 will be 
+; fixed. but for now i had no other choice than ignoring the binary_proto= and 
+; the hash= parameters.
