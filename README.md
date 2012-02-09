@@ -69,7 +69,7 @@ what'd you get
 
 a bunch of apps and functions:
 
-- `__MCD(key)__` (r/w function) - gets or sets the value in the cache store for the given key
+- **`MCD(key)`** (r/w function) - gets or sets the value in the cache store for the given key
 - `mcdadd(key,value)` (app) - same as above, but fail if the key exists
 - `mcdreplace(key,value)` (app) - same as above, but fail if the key doesnt exist
 - `mcdappend(key,value)` (app) - append given text to the value at an existing key
