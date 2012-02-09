@@ -11,9 +11,9 @@ basic functions
 ---------------
 __res_memcached__ implements the basic memcached access functions: _get_, _set_, _add_, _replace_, 
 _append_, _delete_. 
-- `exten => s,n,set(MCD(${key})=some text)`
-- `exten => s,n,mcdappend(${key},... and some more text)`
-- `exten => s,n,noop(value now: ${MCD(${key})}) ; prints "some text... and some more text" to CLI`
+    exten => s,n,set(MCD(${key})=some text)
+    exten => s,n,mcdappend(${key},... and some more text)
+    exten => s,n,noop(value now: ${MCD(${key})}) ; prints "some text... and some more text" to CLI
 in addition to this, __res_memcached__ offers a powerful counter function, that safely maintains 
 integer counters across multiple concurrent clients and clusters of memcached servers.
 
@@ -31,22 +31,22 @@ asterisk.
 dont proceed to building it yet. 
 3. cd into the directory where you unzipped / untarred asterisk, and get the __res_memcached__ module 
 (git must be installed on your machine):
-> `git clone git://github.com/drivefast/asterisk-res_memcached.git`
+    git clone git://github.com/drivefast/asterisk-res_memcached.git
 4. we now need to move the source files to their appropriate places in the asterisk directory. a 
 shell script was provided for that, so run
-> `./asterisk-res_memcached/install.sh`
+    ./asterisk-res_memcached/install.sh
 5. edit the file configure.ac and add the following lines next to the similar ones:
-> `AST_EXT_LIB_SETUP([MEMCACHED], [memcached client], [memcached])`
-> `AST_EXT_LIB_CHECK([MEMCACHED], [memcached], [memcached_create], [libmemcached/memcached.h])`
+    AST_EXT_LIB_SETUP([MEMCACHED], [memcached client], [memcached])
+    AST_EXT_LIB_CHECK([MEMCACHED], [memcached], [memcached_create], [libmemcached/memcached.h])
 6. edit the file makeopts.in and add the following lines next to the similar ones:
-> `MEMCACHED_INCLUDE=@MEMCACHED_INCLUDE@`
-> `MEMCACHED_LIB=@MEMCACHED_LIB@`
+    MEMCACHED_INCLUDE=@MEMCACHED_INCLUDE@
+    MEMCACHED_LIB=@MEMCACHED_LIB@
 7. edit the file `build_tools/menuselect-deps.in` and add the following line next to the similar ones:
-> `MEMCACHED=@PBX_MEMCACHED@`
+    MEMCACHED=@PBX_MEMCACHED@
 8. run 
-> `./bootstrap.sh` 
+    ./bootstrap.sh
 if you previously built from this asterisk directory, also do a 
-> `make clean` 
+    make clean 
 9. only now proceed with building asterisk (`./configure; make menuconfig; make; make install`).
 10. start your memcached servers. edit the file `/etc/asterisk/memcached.conf` and configure the 
 startup parameters.
