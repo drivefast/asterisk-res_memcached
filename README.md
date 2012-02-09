@@ -1,24 +1,25 @@
 whatta...?
 ----------
-res_memcached is an asterisk wrapper module around libmemcached, a client library that offers access 
-to memcached servers. memcached servers are distributed key-value stores, that work in RAM memory 
-and can be accessed over the network; this makes them a good choice for a fast, intermediate layer 
-between an application and the database backend. memcached can be found at http://memcached.org and 
-libmemcached is available at http://libmemcached.org . you will need both of them as prerequisites.
+__res_memcached__ is an asterisk wrapper module around libmemcached, a client library that offers 
+access to memcached servers. memcached servers are distributed key-value stores, that work in RAM 
+memory and can be accessed over the network; this makes them a good choice for a fast, intermediate 
+layer between an application and the database backend. memcached can be found at http://memcached.org 
+and libmemcached is available at http://libmemcached.org . you will need both of them as 
+prerequisites.
 
 basic functions
 ---------------
-res_memcached implements the basic memcached access functions: get, set, add, replace, append, 
-delete. 
->`exten => s,n,set(MCD(${key})=some text)`
->`exten => s,n,mcdappend(${key},... and some more text)`
->`exten => s,n,noop(value now: ${MCD(${key})}) ; prints "some text... and some more text" to CLI`
-in addition to this, res_memcached offers a powerful counter function, that safely maintains integer 
-counters across multiple concurrent clients and clusters of memcached servers.
+__res_memcached__ implements the basic memcached access functions: _get_, _set_, _add_, _replace_, 
+_append_, _delete_. 
+- `exten => s,n,set(MCD(${key})=some text)`
+- `exten => s,n,mcdappend(${key},... and some more text)`
+- `exten => s,n,noop(value now: ${MCD(${key})}) ; prints "some text... and some more text" to CLI`
+in addition to this, __res_memcached__ offers a powerful counter function, that safely maintains 
+integer counters across multiple concurrent clients and clusters of memcached servers.
 
 install
 -------
-res_memcached needs to be built into asterisk. i'm working with the people that take care of the 
+__res_memcached__ needs to be built into asterisk. i'm working with the people that take care of the 
 asterisk distribution so we can include this module in the main distribution. until that happens, 
 you will need to compile asterisk from source and have it take care of linking to libmemcached. 
 therefore, step by step, this is what you have to do.
@@ -28,28 +29,28 @@ where you want it working. install the client library libmemcached
 asterisk.
 2. obtain the asterisk source code, from https://www.asterisk.org/downloads. unzip and untar it, but 
 dont proceed to building it yet. 
-3. cd into the directory where you unzipped / untarred asterisk, and get the res_memcached module 
+3. cd into the directory where you unzipped / untarred asterisk, and get the __res_memcached__ module 
 (git must be installed on your machine):
-   git clone git://github.com/drivefast/asterisk-res_memcached.git
+> `git clone git://github.com/drivefast/asterisk-res_memcached.git`
 4. we now need to move the source files to their appropriate places in the asterisk directory. a 
 shell script was provided for that, so run
-   ./asterisk-res_memcached/install.sh
+> `./asterisk-res_memcached/install.sh`
 5. edit the file configure.ac and add the following lines next to the similar ones:
-   AST_EXT_LIB_SETUP([MEMCACHED], [memcached client], [memcached])
-   AST_EXT_LIB_CHECK([MEMCACHED], [memcached], [memcached_create], [libmemcached/memcached.h])
+> `AST_EXT_LIB_SETUP([MEMCACHED], [memcached client], [memcached])`
+> `AST_EXT_LIB_CHECK([MEMCACHED], [memcached], [memcached_create], [libmemcached/memcached.h])`
 6. edit the file makeopts.in and add the following lines next to the similar ones:
-   MEMCACHED_INCLUDE=@MEMCACHED_INCLUDE@
-   MEMCACHED_LIB=@MEMCACHED_LIB@
-7. edit the file build_tools/menuselect-deps.in and add the following line next to the similar ones:
-   MEMCACHED=@PBX_MEMCACHED@
+> `MEMCACHED_INCLUDE=@MEMCACHED_INCLUDE@`
+> `MEMCACHED_LIB=@MEMCACHED_LIB@`
+7. edit the file `build_tools/menuselect-deps.in` and add the following line next to the similar ones:
+> `MEMCACHED=@PBX_MEMCACHED@`
 8. run 
-   ./bootstrap.sh. 
+> `./bootstrap.sh` 
 if you previously built from this asterisk directory, also do a 
-   make clean 
-9. only now proceed with building asterisk (./configure; make menuconfig; make; make install).
-10. start your memcached servers. edit the file /etc/asterisk/memcached.conf and configure the 
+> `make clean` 
+9. only now proceed with building asterisk (`./configure; make menuconfig; make; make install`).
+10. start your memcached servers. edit the file `/etc/asterisk/memcached.conf` and configure the 
 startup parameters.
-11. start asterisk, login to its console, and try "core show function MCD". you should get an 
+11. start asterisk, login to its console, and try `"core show function MCD"`. you should get an 
 usage description.
 
 what'd you get
