@@ -27,3 +27,4 @@ server=localhost:11211                ; multiple 'server=' entries will create a
 ; fail. hopefully i will find a workaround soon, or libmemcached 1.0 will be 
 ; fixed. but for now i had no other choice than ignoring the binary_proto= and 
 ; the hash= parameters.
+
