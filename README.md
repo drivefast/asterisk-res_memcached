@@ -87,11 +87,15 @@ if any of them would need to return an abnormal result, they would do so by sett
 dialplan variable called `MCDRESULT`. the values returned in `MCDRESULT` are the same as the ones 
 documented for libmemcached. a few more values were added to the __res_memcached__ module:
 
-   MEMCACHED_ARGUMENT_NEEDED - missing or invalid argument type in the app or function call
-   MEMCACHED_KEY_TOO_LONG - key name is too long (maximum lenght is 64 characters)
-   MEMCACHED_VALUE_TOO_LONG - value string is too long (maximum is 4096)
-   MEMCACHED_BAD_INCREMENT - for MCDCOUNTER(), the increment needs to be an integer value
-   MEMCACHED_BINARY_PROTO_NEEDED - for MCDCOUNTER(), the binary protocol has to be used
+* `MEMCACHED_ARGUMENT_NEEDED` - missing or invalid argument type in the app or function call
+
+* `MEMCACHED_KEY_TOO_LONG` - key name is too long (maximum lenght is 64 characters)
+
+* `MEMCACHED_VALUE_TOO_LONG` - value string is too long (maximum is 4096)
+
+* `MEMCACHED_BAD_INCREMENT` - for MCDCOUNTER(), the increment needs to be an integer value
+
+* `MEMCACHED_BINARY_PROTO_NEEDED` - for MCDCOUNTER(), the binary protocol has to be used
 
 the connections to the servers are defined when the module is loaded, and they are based on the 
 settings in the memcached.conf file (which ends up in the same directory where the other asterisk 
@@ -106,55 +110,75 @@ apps and functions
 ------------------
 
 - `MCD(key)` 
+
 sets or returns the value for a key in the cache store. when written to, this function uses the 
 'set' memcached operation.
+
    `key`: the key; may be prefixed with the value in the configuration file
 
 - `mcdset(key,value)`
+
 writes a value in the cache store with a given key. the key may exist, and its value is replaced 
 with this new value; or may not exist, and it is created. the key is expired (deleted) automatically 
 after a period of time (see the discussion about time-to-live below). the mcdset() dialplan app is 
 an alternative to writing in the MCD() function.
+
    `key`: the key; may be prefixed with the value in the configuration file
+
    `value`: the value to be set for the given key
 
 - `mcdadd(key,value)`
+
 creates a key in the cache store and assigns the given value to it. if the key already exists, the 
 operation fails and the error is returned in the MCDRESULT dialplan variable. the key is expired 
 (deleted) automatically after a period of time (see the discussion about time-to-live below).
+
    `key`: the key; may be prefixed with the value in the configuration file
+
    `value`: the value to be set for the given key
 
 - `mcdreplace(key,value)`
+
 replaces the value for a key in the cache store. if the key doesnt exist, the operation fails and 
 the error is returned in the MCDRESULT dialplan variable. the key is expired (deleted) automatically 
 after a period of time (see the discussion about time-to-live below). 
+
    `key`: the key; may be prefixed with the value in the configuration file
+
    `value`: the value to be set for the given key
 
 - `mcdappend(key,text)`
+
 adds more text at the end of the current value of an existing key in the cache store. the operation 
 is atomic: between the time when the app is called, until the time that it finishes its execution, 
 the key is locked, and another memcached operation from another client would not be able to modify 
 the value. the key is expired (deleted) automatically after a period of time (see the discussion 
 about time-to-live below).
+
    `key`: the key; may be prefixed with the value in the configuration file
+
    `value`: the value to be set for the given key
 
 - `mcddelete(key)`
+
 deletes a key and its value from the cache store.
+
    `key`: the key; may be prefixed with the value in the configuration file
 
 - `MCDCOUNTER(key[,increment])`
+
 when written, the function creates or updates an integer entry in the cache store and forces it to 
 the given numeric value. by default, the counter time-to-live is 0 (entry is persistent); if a 
 limited time-to-live is needed, set the value of the MCDTTL dialplan variable to the desired value 
 before creating the key.
+
 when read, the number is initially incremented with the given value (or decremented if the value is 
 negative), and the result is returned. the operation is atomic: between the time when the function 
 is called, until the time that it finishes its execution, the key is locked, and another memcached 
 operation from another client would not be able to modify the counter value.
+
    `key`: the key; may be prefixed with the value in the configuration file
+
    `increment` (only valid when reading): increment or decrement the value at the key, before 
       returning it
    
@@ -164,14 +188,14 @@ time-to-live
 in the memcached world, the keys are automatically expired after a period of time. this timeout 
 value is expressed in seconds, and indicates the time after which the key-value entry is not 
 guaranteed to exist in the cache store anymore. to make sure a key-value record is immediately 
-deleted from the cache store, use the mcddelete() dialplan app. the default time-to-live interval is 
-considered 0 by the server, which means the entry will never expire (be deleted from the cache). 
+deleted from the cache store, use the `mcddelete()` dialplan app. the default time-to-live interval 
+is considered 0 by the server, which means the entry will never expire (be deleted from the cache). 
 this doesnt mean, however, that the entry will survive a memcached server restart; memcached by 
 itself has no mechanism to persist the data. 
 
-the 'ttl' parameter from the configuration file will set the standard time-to-live for the records 
+the `ttl` parameter from the configuration file will set the standard time-to-live for the records 
 in the cache store, and its implicit value is 0. in the dialplan you may override the time-to-live 
-of a record that you are working with, by setting the value of the MCDTTL dialplan variable to the 
+of a record that you are working with, by setting the value of the `MCDTTL` dialplan variable to the 
 appropriate integer value. 
 
 author, licensing and credits
