@@ -101,15 +101,15 @@ sort of tables).
 apps and functions
 ------------------
 
-> `MCD(key)` 
+- `MCD(key)` 
 >
 >sets or returns the value for a key in the cache store. when written to, this function uses the 
-'set' memcached operation.
+>'set' memcached operation.
 >
 > `key`: the key; may be prefixed with the value in the configuration file
 
 
-> `mcdset(key,value)`
+- `mcdset(key,value)`
 >
 >writes a value in the cache store with a given key. the key may exist, and its value is replaced 
 >with this new value; or may not exist, and it is created. the key is expired (deleted) automatically 
@@ -122,11 +122,11 @@ apps and functions
 
 
 - `mcdadd(key,value)`
-
-creates a key in the cache store and assigns the given value to it. if the key already exists, the 
-operation fails and the error is returned in the MCDRESULT dialplan variable. the key is expired 
-(deleted) automatically after a period of time (see the discussion about time-to-live below).
-
+>
+>creates a key in the cache store and assigns the given value to it. if the key already exists, the 
+>operation fails and the error is returned in the MCDRESULT dialplan variable. the key is expired 
+>(deleted) automatically after a period of time (see the discussion about time-to-live below).
+>
 > `key`: the key; may be prefixed with the value in the configuration file
 >
 > `value`: the value to be set for the given key
