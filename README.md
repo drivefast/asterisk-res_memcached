@@ -11,9 +11,11 @@ basic functions
 ---------------
 __res_memcached__ implements the basic memcached access functions: _get_, _set_, _add_, _replace_, 
 _append_, _delete_. 
+
     exten => s,n,set(MCD(${key})=some text)
     exten => s,n,mcdappend(${key},... and some more text)
     exten => s,n,noop(value now: ${MCD(${key})}) ; prints "some text... and some more text" to CLI
+
 in addition to this, __res_memcached__ offers a powerful counter function, that safely maintains 
 integer counters across multiple concurrent clients and clusters of memcached servers.
 
@@ -23,15 +25,19 @@ __res_memcached__ needs to be built into asterisk. i'm working with the people t
 asterisk distribution so we can include this module in the main distribution. until that happens, 
 you will need to compile asterisk from source and have it take care of linking to libmemcached. 
 therefore, step by step, this is what you have to do.
+
 1. install memcached server (from http://code.google.com/p/memcached/downloads/list) on the servers 
 where you want it working. install the client library libmemcached 
 (from https://launchpad.net/libmemcached/+download) on the same system where you plan to install 
 asterisk.
+
 2. obtain the asterisk source code, from https://www.asterisk.org/downloads. unzip and untar it, but 
 dont proceed to building it yet. 
+
 3. cd into the directory where you unzipped / untarred asterisk, and get the __res_memcached__ module 
 (git must be installed on your machine):
     git clone git://github.com/drivefast/asterisk-res_memcached.git
+
 4. we now need to move the source files to their appropriate places in the asterisk directory. a 
 shell script was provided for that, so run
     ./asterisk-res_memcached/install.sh
