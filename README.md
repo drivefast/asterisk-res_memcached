@@ -69,16 +69,11 @@ what'd you get
 
 a bunch of apps and functions:
 
-- `MCD(key)` (r/w function) - gets or sets the value in the cache store for the given key
-
+- `__MCD(key)__` (r/w function) - gets or sets the value in the cache store for the given key
 - `mcdadd(key,value)` (app) - same as above, but fail if the key exists
-
 - `mcdreplace(key,value)` (app) - same as above, but fail if the key doesnt exist
-
 - `mcdappend(key,value)` (app) - append given text to the value at an existing key
-
 - `mcddelete(key)` (app) - delete an entry in the cache store
-
 - `MCDCOUNTER(key)` (r/w function) - sets, increments, decrements or reads the value of an integer 
 counter maintained in the cache store
 
@@ -102,17 +97,19 @@ clusters. if so configured, the memcache module can force a global prefix to be 
 each key it operates with. this is helpful for partitioning the data in the cache store (create some 
 sort of tables).
 
+
 apps and functions
 ------------------
 
-- `MCD(key)` 
+- `__MCD(key)__` 
 
 sets or returns the value for a key in the cache store. when written to, this function uses the 
 'set' memcached operation.
 
 > `key`: the key; may be prefixed with the value in the configuration file
 
-- `mcdset(key,value)`
+
+- `__mcdset(key,value)__`
 
 writes a value in the cache store with a given key. the key may exist, and its value is replaced 
 with this new value; or may not exist, and it is created. the key is expired (deleted) automatically 
@@ -123,7 +120,8 @@ an alternative to writing in the MCD() function.
 >
 > `value`: the value to be set for the given key
 
-- `mcdadd(key,value)`
+
+- `__mcdadd(key,value)__`
 
 creates a key in the cache store and assigns the given value to it. if the key already exists, the 
 operation fails and the error is returned in the MCDRESULT dialplan variable. the key is expired 
@@ -133,16 +131,19 @@ operation fails and the error is returned in the MCDRESULT dialplan variable. th
 >
 > `value`: the value to be set for the given key
 
-- `mcdreplace(key,value)`
+
+- `__mcdreplace(key,value)__`
 
 replaces the value for a key in the cache store. if the key doesnt exist, the operation fails and 
 the error is returned in the MCDRESULT dialplan variable. the key is expired (deleted) automatically 
 after a period of time (see the discussion about time-to-live below). 
 
 > `key`: the key; may be prefixed with the value in the configuration file
+>
 > `value`: the value to be set for the given key
 
-- `mcdappend(key,text)`
+
+- `__mcdappend(key,text)__`
 
 adds more text at the end of the current value of an existing key in the cache store. the operation 
 is atomic: between the time when the app is called, until the time that it finishes its execution, 
@@ -150,17 +151,19 @@ the key is locked, and another memcached operation from another client would not
 the value. the key is expired (deleted) automatically after a period of time (see the discussion 
 about time-to-live below).
 
-   `key`: the key; may be prefixed with the value in the configuration file
+> `key`: the key; may be prefixed with the value in the configuration file
+>
+> `value`: the value to be set for the given key
 
-   `value`: the value to be set for the given key
 
-- `mcddelete(key)`
+- `__mcddelete(key)__`
 
 deletes a key and its value from the cache store.
 
-   `key`: the key; may be prefixed with the value in the configuration file
+> `key`: the key; may be prefixed with the value in the configuration file
 
-- `MCDCOUNTER(key[,increment])`
+
+- `__MCDCOUNTER(key[,increment])__`
 
 when written, the function creates or updates an integer entry in the cache store and forces it to 
 the given numeric value. by default, the counter time-to-live is 0 (entry is persistent); if a 
@@ -172,10 +175,11 @@ negative), and the result is returned. the operation is atomic: between the time
 is called, until the time that it finishes its execution, the key is locked, and another memcached 
 operation from another client would not be able to modify the counter value.
 
-   `key`: the key; may be prefixed with the value in the configuration file
-
-   `increment` (only valid when reading): increment or decrement the value at the key, before 
+> `key`: the key; may be prefixed with the value in the configuration file
+>
+> `increment` (only valid when reading): increment or decrement the value at the key, before 
       returning it
+
    
 time-to-live
 ------------
@@ -192,6 +196,7 @@ the `ttl` parameter from the configuration file will set the standard time-to-li
 in the cache store, and its implicit value is 0. in the dialplan you may override the time-to-live 
 of a record that you are working with, by setting the value of the `MCDTTL` dialplan variable to the 
 appropriate integer value. 
+
 
 author, licensing and credits
 -----------------------------
