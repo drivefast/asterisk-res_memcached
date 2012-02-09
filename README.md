@@ -4,19 +4,15 @@ res_memcached is an asterisk wrapper module around libmemcached, a client librar
 to memcached servers. memcached servers are distributed key-value stores, that work in RAM memory 
 and can be accessed over the network; this makes them a good choice for a fast, intermediate layer 
 between an application and the database backend. memcached can be found at http://memcached.org and 
-libmemcached is available at http://libmemcached.org. you will need both of them as prerequisites.
+libmemcached is available at http://libmemcached.org . you will need both of them as prerequisites.
 
 basic functions
 ---------------
 res_memcached implements the basic memcached access functions: get, set, add, replace, append, 
 delete. 
-
-   `exten => s,n,set(MCD(${key})=some text)`
-   
-   `exten => s,n,mcdappend(${key},... and some more text)`
-   
-   `exten => s,n,noop(value now: ${MCD(${key})}) ; prints "some text... and some more text" to CLI`
-
+>`exten => s,n,set(MCD(${key})=some text)`
+>`exten => s,n,mcdappend(${key},... and some more text)`
+>`exten => s,n,noop(value now: ${MCD(${key})}) ; prints "some text... and some more text" to CLI`
 in addition to this, res_memcached offers a powerful counter function, that safely maintains integer 
 counters across multiple concurrent clients and clusters of memcached servers.
 
