@@ -35,49 +35,64 @@ asterisk.
 dont proceed to building it yet. 
 
 3. cd into the directory where you unzipped / untarred asterisk, and get the __res_memcached__ module 
-(git must be installed on your machine):
-    git clone git://github.com/drivefast/asterisk-res_memcached.git
+(git must be installed on your machine): `git clone git://github.com/drivefast/asterisk-res_memcached.git`
 
 4. we now need to move the source files to their appropriate places in the asterisk directory. a 
-shell script was provided for that, so run
-    ./asterisk-res_memcached/install.sh
-5. edit the file configure.ac and add the following lines next to the similar ones:
+shell script was provided for that, so run `./asterisk-res_memcached/install.sh`
+
+5. edit the file `configure.ac` and add the following lines next to the similar ones:
+
     AST_EXT_LIB_SETUP([MEMCACHED], [memcached client], [memcached])
     AST_EXT_LIB_CHECK([MEMCACHED], [memcached], [memcached_create], [libmemcached/memcached.h])
-6. edit the file makeopts.in and add the following lines next to the similar ones:
+
+6. edit the file `makeopts.in` and add the following lines next to the similar ones:
+
     MEMCACHED_INCLUDE=@MEMCACHED_INCLUDE@
     MEMCACHED_LIB=@MEMCACHED_LIB@
+
 7. edit the file `build_tools/menuselect-deps.in` and add the following line next to the similar ones:
+
     MEMCACHED=@PBX_MEMCACHED@
-8. run 
-    ./bootstrap.sh
-if you previously built from this asterisk directory, also do a 
-    make clean 
+
+8. run `./bootstrap.sh`. if you previously built from this asterisk directory, also do a `make clean`
+
 9. only now proceed with building asterisk (`./configure; make menuconfig; make; make install`).
+
 10. start your memcached servers. edit the file `/etc/asterisk/memcached.conf` and configure the 
 startup parameters.
+
 11. start asterisk, login to its console, and try `"core show function MCD"`. you should get an 
 usage description.
 
 what'd you get
 --------------
+
 a bunch of apps and functions:
-- function MCD(key) - gets or sets the value in the cache store for the given key
-- app mcdadd(key,value) - same as above, but fail if the key exists
-- app mcdreplace(key,value) - same as above, but fail if the key doesnt exist
-- app mcdappend(key,value) - append given text to the value at an existing key
-- app mcddelete(key) - delete an entry in the cache store
-- function MCDCOUNTER(key) - sets, increments, decrements or reads the value of an integer counter 
+
+- function `MCD(key)` - gets or sets the value in the cache store for the given key
+
+- app `mcdadd(key,value)` - same as above, but fail if the key exists
+
+- app `mcdreplace(key,value)` - same as above, but fail if the key doesnt exist
+
+- app `mcdappend(key,value)` - append given text to the value at an existing key
+
+- app `mcddelete(key)` - delete an entry in the cache store
+
+- function `MCDCOUNTER(key)` - sets, increments, decrements or reads the value of an integer counter 
 maintained in the cache store
+
 none of the functions or the apps above would fail in such a way that it would terminate the call.  
 if any of them would need to return an abnormal result, they would do so by setting the value of a 
-dialplan variable called MCDRESULT. the values returned in MCDRESULT are the same as the ones 
-documented for libmemcached. a few more values were added to the res_memcached module:
+dialplan variable called `MCDRESULT`. the values returned in `MCDRESULT` are the same as the ones 
+documented for libmemcached. a few more values were added to the __res_memcached__ module:
+
    MEMCACHED_ARGUMENT_NEEDED - missing or invalid argument type in the app or function call
    MEMCACHED_KEY_TOO_LONG - key name is too long (maximum lenght is 64 characters)
    MEMCACHED_VALUE_TOO_LONG - value string is too long (maximum is 4096)
    MEMCACHED_BAD_INCREMENT - for MCDCOUNTER(), the increment needs to be an integer value
    MEMCACHED_BINARY_PROTO_NEEDED - for MCDCOUNTER(), the binary protocol has to be used
+
 the connections to the servers are defined when the module is loaded, and they are based on the 
 settings in the memcached.conf file (which ends up in the same directory where the other asterisk 
 configuration files are). however, be advised that an actual tcp connection is only opened to the 
@@ -90,53 +105,47 @@ sort of tables).
 apps and functions
 ------------------
 
-- MCD(key) 
+- `MCD(key)` 
 sets or returns the value for a key in the cache store. when written to, this function uses the 
 'set' memcached operation.
-parameters
-   key: the key; may be prefixed with the value in the configuration file
+   `key`: the key; may be prefixed with the value in the configuration file
 
-- mcdset(key,value)
+- `mcdset(key,value)`
 writes a value in the cache store with a given key. the key may exist, and its value is replaced 
 with this new value; or may not exist, and it is created. the key is expired (deleted) automatically 
 after a period of time (see the discussion about time-to-live below). the mcdset() dialplan app is 
 an alternative to writing in the MCD() function.
-parameters
-   key: the key; may be prefixed with the value in the configuration file
-   value: the value to be set for the given key
+   `key`: the key; may be prefixed with the value in the configuration file
+   `value`: the value to be set for the given key
 
-- mcdadd(key,value)
+- `mcdadd(key,value)`
 creates a key in the cache store and assigns the given value to it. if the key already exists, the 
 operation fails and the error is returned in the MCDRESULT dialplan variable. the key is expired 
 (deleted) automatically after a period of time (see the discussion about time-to-live below).
-parameters
-   key: the key; may be prefixed with the value in the configuration file
-   value: the value to be set for the given key
+   `key`: the key; may be prefixed with the value in the configuration file
+   `value`: the value to be set for the given key
 
-- mcdreplace(key,value)
+- `mcdreplace(key,value)`
 replaces the value for a key in the cache store. if the key doesnt exist, the operation fails and 
 the error is returned in the MCDRESULT dialplan variable. the key is expired (deleted) automatically 
 after a period of time (see the discussion about time-to-live below). 
-parameters
-   key: the key; may be prefixed with the value in the configuration file
-   value: the value to be set for the given key
+   `key`: the key; may be prefixed with the value in the configuration file
+   `value`: the value to be set for the given key
 
-- mcdappend(key,text)
+- `mcdappend(key,text)`
 adds more text at the end of the current value of an existing key in the cache store. the operation 
 is atomic: between the time when the app is called, until the time that it finishes its execution, 
 the key is locked, and another memcached operation from another client would not be able to modify 
 the value. the key is expired (deleted) automatically after a period of time (see the discussion 
 about time-to-live below).
-parameters
-   key: the key; may be prefixed with the value in the configuration file
-   value: the value to be set for the given key
+   `key`: the key; may be prefixed with the value in the configuration file
+   `value`: the value to be set for the given key
 
-- mcddelete(key)
+- `mcddelete(key)`
 deletes a key and its value from the cache store.
-parameters
-   key: the key; may be prefixed with the value in the configuration file
+   `key`: the key; may be prefixed with the value in the configuration file
 
-- MCDCOUNTER(key[,increment])
+- `MCDCOUNTER(key[,increment])`
 when written, the function creates or updates an integer entry in the cache store and forces it to 
 the given numeric value. by default, the counter time-to-live is 0 (entry is persistent); if a 
 limited time-to-live is needed, set the value of the MCDTTL dialplan variable to the desired value 
@@ -145,13 +154,13 @@ when read, the number is initially incremented with the given value (or decremen
 negative), and the result is returned. the operation is atomic: between the time when the function 
 is called, until the time that it finishes its execution, the key is locked, and another memcached 
 operation from another client would not be able to modify the counter value.
-parameters
-   key: the key; may be prefixed with the value in the configuration file
-   increment (only valid when reading): increment or decrement the value at the key, before 
+   `key`: the key; may be prefixed with the value in the configuration file
+   `increment` (only valid when reading): increment or decrement the value at the key, before 
       returning it
    
 time-to-live
 ------------
+
 in the memcached world, the keys are automatically expired after a period of time. this timeout 
 value is expressed in seconds, and indicates the time after which the key-value entry is not 
 guaranteed to exist in the cache store anymore. to make sure a key-value record is immediately 
@@ -167,15 +176,16 @@ appropriate integer value.
 
 author, licensing and credits
 -----------------------------
+
 Radu Maierean
 radu dot maierean at gmail
 
 Copyright (c) 2010 Radu Maierean
 
-the res_memcached module is distributed under the GNU General Public License version 2. The GPL 
+the __res_memcached__ module is distributed under the GNU General Public License version 2. The GPL 
 (version 2) is included in this source tree in the file COPYING.
 
-the res_memcached module is built on top of Brian Aker's libmemcached, and dynamically links to it. 
-the res_memcached module is intended to be used with asterisk, so you will have to follow their 
+the __res_memcached__ module is built on top of Brian Aker's libmemcached, and dynamically links to it. 
+the __res_memcached module__ is intended to be used with asterisk, so you will have to follow their 
 usage and distribution policy. and i guess so do i. i'm no lawyer and i have to take the safe route, 
 and this is why i go with the same level of license restriction as asterisk does. 
