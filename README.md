@@ -42,17 +42,17 @@ shell script was provided for that, so run `./asterisk-res_memcached/install.sh`
 
 5. edit the file `configure.ac` and add the following lines next to the similar ones:
 
-    AST_EXT_LIB_SETUP([MEMCACHED], [memcached client], [memcached])
-    AST_EXT_LIB_CHECK([MEMCACHED], [memcached], [memcached_create], [libmemcached/memcached.h])
+> `AST_EXT_LIB_SETUP([MEMCACHED], [memcached client], [memcached])`
+> `AST_EXT_LIB_CHECK([MEMCACHED], [memcached], [memcached_create], [libmemcached/memcached.h])`
 
 6. edit the file `makeopts.in` and add the following lines next to the similar ones:
 
-    MEMCACHED_INCLUDE=@MEMCACHED_INCLUDE@
-    MEMCACHED_LIB=@MEMCACHED_LIB@
+> `MEMCACHED_INCLUDE=@MEMCACHED_INCLUDE@`
+> `MEMCACHED_LIB=@MEMCACHED_LIB@`
 
 7. edit the file `build_tools/menuselect-deps.in` and add the following line next to the similar ones:
 
-    MEMCACHED=@PBX_MEMCACHED@
+> `MEMCACHED=@PBX_MEMCACHED@`
 
 8. run `./bootstrap.sh`. if you previously built from this asterisk directory, also do a `make clean`
 
@@ -69,18 +69,18 @@ what'd you get
 
 a bunch of apps and functions:
 
-- function `MCD(key)` - gets or sets the value in the cache store for the given key
+- `MCD(key)` (r/w function) - gets or sets the value in the cache store for the given key
 
-- app `mcdadd(key,value)` - same as above, but fail if the key exists
+- `mcdadd(key,value)` (app) - same as above, but fail if the key exists
 
-- app `mcdreplace(key,value)` - same as above, but fail if the key doesnt exist
+- `mcdreplace(key,value)` (app) - same as above, but fail if the key doesnt exist
 
-- app `mcdappend(key,value)` - append given text to the value at an existing key
+- `mcdappend(key,value)` (app) - append given text to the value at an existing key
 
-- app `mcddelete(key)` - delete an entry in the cache store
+- `mcddelete(key)` (app) - delete an entry in the cache store
 
-- function `MCDCOUNTER(key)` - sets, increments, decrements or reads the value of an integer counter 
-maintained in the cache store
+- `MCDCOUNTER(key)` (r/w function) - sets, increments, decrements or reads the value of an integer 
+counter maintained in the cache store
 
 none of the functions or the apps above would fail in such a way that it would terminate the call.  
 if any of them would need to return an abnormal result, they would do so by setting the value of a 
@@ -88,13 +88,9 @@ dialplan variable called `MCDRESULT`. the values returned in `MCDRESULT` are the
 documented for libmemcached. a few more values were added to the __res_memcached__ module:
 
 * `MEMCACHED_ARGUMENT_NEEDED` - missing or invalid argument type in the app or function call
-
 * `MEMCACHED_KEY_TOO_LONG` - key name is too long (maximum lenght is 64 characters)
-
 * `MEMCACHED_VALUE_TOO_LONG` - value string is too long (maximum is 4096)
-
 * `MEMCACHED_BAD_INCREMENT` - for MCDCOUNTER(), the increment needs to be an integer value
-
 * `MEMCACHED_BINARY_PROTO_NEEDED` - for MCDCOUNTER(), the binary protocol has to be used
 
 the connections to the servers are defined when the module is loaded, and they are based on the 
@@ -114,7 +110,7 @@ apps and functions
 sets or returns the value for a key in the cache store. when written to, this function uses the 
 'set' memcached operation.
 
-   `key`: the key; may be prefixed with the value in the configuration file
+> `key`: the key; may be prefixed with the value in the configuration file
 
 - `mcdset(key,value)`
 
@@ -123,9 +119,9 @@ with this new value; or may not exist, and it is created. the key is expired (de
 after a period of time (see the discussion about time-to-live below). the mcdset() dialplan app is 
 an alternative to writing in the MCD() function.
 
-   `key`: the key; may be prefixed with the value in the configuration file
-
-   `value`: the value to be set for the given key
+> `key`: the key; may be prefixed with the value in the configuration file
+>
+> `value`: the value to be set for the given key
 
 - `mcdadd(key,value)`
 
@@ -133,9 +129,9 @@ creates a key in the cache store and assigns the given value to it. if the key a
 operation fails and the error is returned in the MCDRESULT dialplan variable. the key is expired 
 (deleted) automatically after a period of time (see the discussion about time-to-live below).
 
-   `key`: the key; may be prefixed with the value in the configuration file
-
-   `value`: the value to be set for the given key
+> `key`: the key; may be prefixed with the value in the configuration file
+>
+> `value`: the value to be set for the given key
 
 - `mcdreplace(key,value)`
 
@@ -143,9 +139,8 @@ replaces the value for a key in the cache store. if the key doesnt exist, the op
 the error is returned in the MCDRESULT dialplan variable. the key is expired (deleted) automatically 
 after a period of time (see the discussion about time-to-live below). 
 
-   `key`: the key; may be prefixed with the value in the configuration file
-
-   `value`: the value to be set for the given key
+> `key`: the key; may be prefixed with the value in the configuration file
+> `value`: the value to be set for the given key
 
 - `mcdappend(key,text)`
 
