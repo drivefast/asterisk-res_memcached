@@ -69,7 +69,7 @@ what'd you get
 
 a bunch of apps and functions:
 
-- **`MCD(key)`** (r/w function) - gets or sets the value in the cache store for the given key
+- `MCD(key)` (r/w function) - gets or sets the value in the cache store for the given key
 - `mcdadd(key,value)` (app) - same as above, but fail if the key exists
 - `mcdreplace(key,value)` (app) - same as above, but fail if the key doesnt exist
 - `mcdappend(key,value)` (app) - append given text to the value at an existing key
@@ -101,27 +101,27 @@ sort of tables).
 apps and functions
 ------------------
 
-- `__MCD(key)__` 
-
-sets or returns the value for a key in the cache store. when written to, this function uses the 
+> `MCD(key)` 
+>
+>sets or returns the value for a key in the cache store. when written to, this function uses the 
 'set' memcached operation.
-
+>
 > `key`: the key; may be prefixed with the value in the configuration file
 
 
-- `__mcdset(key,value)__`
-
-writes a value in the cache store with a given key. the key may exist, and its value is replaced 
-with this new value; or may not exist, and it is created. the key is expired (deleted) automatically 
-after a period of time (see the discussion about time-to-live below). the mcdset() dialplan app is 
-an alternative to writing in the MCD() function.
-
+> `mcdset(key,value)`
+>
+>writes a value in the cache store with a given key. the key may exist, and its value is replaced 
+>with this new value; or may not exist, and it is created. the key is expired (deleted) automatically 
+>after a period of time (see the discussion about time-to-live below). the mcdset() dialplan app is 
+>an alternative to writing in the MCD() function.
+>
 > `key`: the key; may be prefixed with the value in the configuration file
 >
 > `value`: the value to be set for the given key
 
 
-- `__mcdadd(key,value)__`
+- `mcdadd(key,value)`
 
 creates a key in the cache store and assigns the given value to it. if the key already exists, the 
 operation fails and the error is returned in the MCDRESULT dialplan variable. the key is expired 
