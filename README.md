@@ -26,42 +26,42 @@ asterisk distribution so we can include this module in the main distribution. un
 you will need to compile asterisk from source and have it take care of linking to libmemcached. 
 therefore, step by step, this is what you have to do.
 
-* install memcached server (from http://code.google.com/p/memcached/downloads/list) on the servers 
+(1) install memcached server (from http://code.google.com/p/memcached/downloads/list) on the servers 
 where you want it working. install the client library libmemcached 
 (from https://launchpad.net/libmemcached/+download) on the same system where you plan to install 
 asterisk.
 
-* obtain the asterisk source code, from https://www.asterisk.org/downloads. unzip and untar it, but 
+(2) obtain the asterisk source code, from https://www.asterisk.org/downloads. unzip and untar it, but 
 dont proceed to building it yet. 
 
-* cd into the directory where you unzipped / untarred asterisk, and get the __res_memcached__ module 
+(3) cd into the directory where you unzipped / untarred asterisk, and get the __res_memcached__ module 
 (git must be installed on your machine): `git clone git://github.com/drivefast/asterisk-res_memcached.git`
 
-* we now need to move the source files to their appropriate places in the asterisk directory. a 
+(4) we now need to move the source files to their appropriate places in the asterisk directory. a 
 shell script was provided for that, so run `./asterisk-res_memcached/install.sh`
 
-* edit the file `configure.ac` and add the following lines next to the similar ones:
+(5) edit the file `configure.ac` and add the following lines next to the similar ones:
 
     AST_EXT_LIB_SETUP([MEMCACHED], [memcached client], [memcached])
     AST_EXT_LIB_CHECK([MEMCACHED], [memcached], [memcached_create], [libmemcached/memcached.h])
 
-* edit the file `makeopts.in` and add the following lines next to the similar ones:
+(6) edit the file `makeopts.in` and add the following lines next to the similar ones:
 
     MEMCACHED_INCLUDE=@MEMCACHED_INCLUDE@
     MEMCACHED_LIB=@MEMCACHED_LIB@
 
-* edit the file `build_tools/menuselect-deps.in` and add the following line next to the similar ones:
+(7) edit the file `build_tools/menuselect-deps.in` and add the following line next to the similar ones:
 
     MEMCACHED=@PBX_MEMCACHED@
 
-* run `./bootstrap.sh`. if you previously built from this asterisk directory, also do a `make clean`
+(8) run `./bootstrap.sh`. if you previously built from this asterisk directory, also do a `make clean`
 
-* only now proceed with building asterisk (`./configure; make menuconfig; make; make install`).
+(9) only now proceed with building asterisk (`./configure; make menuconfig; make; make install`).
 
-* start your memcached servers. edit the file `/etc/asterisk/memcached.conf` and configure the 
+(10) start your memcached servers. edit the file `/etc/asterisk/memcached.conf` and configure the 
 startup parameters.
 
-* start asterisk, login to its console, and try `"core show function MCD"`. you should get an 
+(11) start asterisk, login to its console, and try `"core show function MCD"`. you should get an 
 usage description.
 
 
