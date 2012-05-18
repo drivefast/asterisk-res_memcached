@@ -43,7 +43,7 @@ shell script was provided for that, so run `./asterisk-res_memcached/install.sh`
 (5) edit the file `configure.ac` and add the following lines next to the similar ones:
 
     AST_EXT_LIB_SETUP([MEMCACHED], [memcached client], [memcached])
-    AST_EXT_LIB_CHECK([MEMCACHED], [memcached], [memcached_create], [libmemcached/memcached.h])
+    AST_EXT_LIB_CHECK([MEMCACHED], [memcached], [memcached_create], [libmemcached-1.0/memcached.h], [-lmemcachedutil])
 
 (6) edit the file `makeopts.in` and add the following lines next to the similar ones:
 
