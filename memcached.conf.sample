@@ -11,7 +11,7 @@ hash=default                          ; hashing mode (see libmemcached documenta
                                       ;   (which is actually md5), md5, crc, fnv1_64, fnv1_64a, fnv1_32, fnv1_32a,
                                       ;   jenkins, hsieh, murmur. make sure whatever you select is actually
                                       ;   supported by the library ecosystem on your machine
-keyprefix=                            ; whatever string you specify here is prepended to each key that is retrieved
+;keyprefix=                           ; whatever string you specify here is prepended to each key that is retrieved
                                       ;   or stored, so that you can create some sort of a "domain" for your
                                       ;   asterisk server
 server=localhost:11211                ; multiple 'server=' entries will create a cluster of servers to connect to;
