@@ -528,9 +528,15 @@ static int mcd_write(
 	}
 	ast_log(LOG_DEBUG, "timeout: %d\n", timeout);
 
+	int value_length = strlen(value);
+
+	if(!value_length){
+		value_length++;
+	}
+
 	memcached_return_t mcdret = MEMCACHED_FAILURE;
 	mcdret = memcached_set(mcd, 
-		key, strlen(key), value, strlen(value), (time_t)timeout, (uint32_t)0
+		key, strlen(key), value, value_length, (time_t)timeout, (uint32_t)0
 	);
 	if (mcdret)
 		ast_log(LOG_WARNING, 
@@ -669,22 +675,28 @@ static void mcd_putdata(const char *cmd, struct ast_channel *chan, const char *d
 	}
 	ast_log(LOG_DEBUG, "timeout: %d\n", timeout);
 
+	int value_length = strlen(args.val);
+
+	if(!value_length){
+		value_length++;
+	}
+
 	memcached_return_t mcdret = MEMCACHED_FAILURE;
 	if (strcmp(cmd, "set") == 0)
 		mcdret = memcached_set(mcd, 
-			key, strlen(key), args.val, strlen(args.val), (time_t)timeout, (uint32_t)0
+			key, strlen(key), args.val, value_length, (time_t)timeout, (uint32_t)0
 		);
 	else if (strcmp(cmd, "add") == 0)
 		mcdret = memcached_add(mcd, 
-			key, strlen(key), args.val, strlen(args.val), (time_t)timeout, (uint32_t)0
+			key, strlen(key), args.val, value_length, (time_t)timeout, (uint32_t)0
 		);
 	else if (strcmp(cmd, "replace") == 0)
 		mcdret = memcached_replace(mcd, 
-			key, strlen(key), args.val, strlen(args.val), (time_t)timeout, (uint32_t)0
+			key, strlen(key), args.val, value_length, (time_t)timeout, (uint32_t)0
 		);
 	else if (strcmp(cmd, "append") == 0)
 		mcdret = memcached_append(mcd, 
-			key, strlen(key), args.val, strlen(args.val), (time_t)timeout, (uint32_t)0
+			key, strlen(key), args.val, value_length, (time_t)timeout, (uint32_t)0
 		);
 
 	if (mcdret)
